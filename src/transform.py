@@ -5,25 +5,8 @@ from PIL import Image
 from functools import partial, reduce
 
 
-def _apply_func_to_img(img, dim_in, dim_out, xlim, ylim, pixels, cur, nxt):
-    pos, z = cur
-    r0 = pos % dim_in[0]
-    c0 = (pos - r0) / dim_in[0]
-    r1 = round(dim_out[1] * (np.imag(z) - ylim[0]) / (ylim[1] - ylim[0]))
-    c1 = round(dim_out[0] * (np.real(z) - xlim[0]) / (xlim[1] - xlim[0]))
-    if 0 <= c1 < dim_out[0] and 0 <= r1 < dim_out[1]:
-        p = img.getpixel((r0, c0))
-        if np.sum(p[:3]) > 0 and p[3] > 0:
-            pixels[int(c1)][int(r1)].append(p)
-    return nxt
-
-
 def blend_first(p):
-    p = filter(lambda p: np.sum(p[:3]) > 0 and p[3] > 0, p)
-    try:
-        return next(p)
-    except StopIteration:
-        return (0, 0, 0)
+    return p[0]
 
 
 def blend_add(p):
@@ -47,12 +30,32 @@ def blend_avg(p):
     )
 
 
+def filter_nonempty(p):
+    if len(p) > 3 and p[3] == 0:
+        return False
+    return p[0] + p[1] + p[2] > 0
+
+
+def _apply_func_to_img(img, filter_func, dim_in, dim_out, xlim, ylim, pixels, cur, nxt):
+    pos, z = cur
+    r0 = pos % dim_in[0]
+    c0 = (pos - r0) / dim_in[0]
+    r1 = round(dim_out[1] * (np.imag(z) - ylim[0]) / (ylim[1] - ylim[0]))
+    c1 = round(dim_out[0] * (np.real(z) - xlim[0]) / (xlim[1] - xlim[0]))
+    if 0 <= c1 < dim_out[0] and 0 <= r1 < dim_out[1]:
+        p = img.getpixel((r0, c0))
+        if filter_func(p):
+            pixels[int(c1)][int(r1)].append(p)
+    return nxt
+
+
 def apply_to(func, img, *,
              xlim_in=(-1, 1), xlim_out=(-1, 1),
              ylim_in=(-1, 1), ylim_out=(-1, 1),
              lim_in=None, lim_out=None,
              dim_out=None,
-             blend=blend_first):
+             blend_func=blend_first,
+             filter_func=filter_nonempty):
     if lim_in is not None:
         xlim_in = lim_in
         ylim_in = lim_in
@@ -77,7 +80,7 @@ def apply_to(func, img, *,
     )
     z1 = func(z0)
     reduce(
-        partial(_apply_func_to_img, img, dim_in,
+        partial(_apply_func_to_img, img, filter_func, dim_in,
                 dim_out, xlim_out, ylim_out, pixList),
         enumerate(z1)
     )
@@ -85,7 +88,7 @@ def apply_to(func, img, *,
     for i, r in enumerate(pixList):
         for j, p in enumerate(r):
             if p:
-                pixels[i, j] = blend(p)
+                pixels[i, j] = blend_func(p)
             else:
                 pixels[i, j] = (0, 0, 0)
 

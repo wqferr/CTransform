@@ -13,7 +13,8 @@ if __name__ == '__main__':
             Image.NEAREST
         )
     apply_to(
-        lambda z: z**2,
+        lambda z: z**2.5,
         img,
-        blend=transform.blend_avg
+        lim_in=(-2, 2),
+        blend_func=transform.blend_avg
     ).show()
