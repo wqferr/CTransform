@@ -11,8 +11,6 @@ if __name__ == '__main__':
             Image.NEAREST
         )
     apply_to(
-        lambda z: z**5,
-        img,
-        lim_out=(-0.1, 0.1),
-        dim_out=(1000, 1000)
+        lambda z: z**2,
+        img
     ).show()

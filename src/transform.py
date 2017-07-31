@@ -11,8 +11,7 @@ def _apply_func_to_img(img, dim_in, dim_out, xlim, ylim, pixels, cur, nxt):
     c1 = round(dim_out[0] * (np.real(z) - xlim[0]) / (xlim[1] - xlim[0]))
     if 0 <= c1 < dim_out[0] and 0 <= r1 < dim_out[1]:
         p = img.getpixel((r0, c0))
-        if np.sum(p) > 0:
-            pixels[c1, r1] = p
+        pixels[int(c1)][int(r1)].append(p)
     return nxt
 
 
@@ -29,12 +28,13 @@ def apply_to(func, img, *,
         xlim_out = lim_out
         ylim_out = lim_out
 
-    if dim_out is None:
-        dim_out = img.size
-
     dim_in = img.size
+    if dim_out is None:
+        dim_out = dim_in
+
     newImg = Image.new(img.mode, dim_out)
     pixels = newImg.load()
+    pixList = [[[] for j in range(dim_out[1])] for i in range(dim_out[0])]
 
     x = np.linspace(xlim_in[0], xlim_in[1], dim_in[0])
     y = np.linspace(ylim_in[0], ylim_in[1], dim_in[1]) * 1j
@@ -45,8 +45,19 @@ def apply_to(func, img, *,
     z1 = func(z0)
     reduce(
         partial(_apply_func_to_img, img, dim_in,
-                dim_out, xlim_out, ylim_out, pixels),
+                dim_out, xlim_out, ylim_out, pixList),
         enumerate(z1)
     )
+
+    for i, r in enumerate(pixList):
+        for j, p in enumerate(r):
+            if p:
+                a = np.array(p)
+                r, g, b = a[:, 0], a[:, 1], a[:, 2]
+                pixels[i, j] = (
+                    min(int(round(np.sum(r))), 255),
+                    min(int(round(np.sum(g))), 255),
+                    min(int(round(np.sum(b))), 255)
+                )
 
     return newImg
