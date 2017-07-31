@@ -49,13 +49,13 @@ def _apply_func_to_img(img, filter_func, dim_in, dim_out, xlim, ylim, pixels, cu
     return nxt
 
 
-def apply_to(func, img, *,
-             xlim_in=(-1, 1), xlim_out=(-1, 1),
-             ylim_in=(-1, 1), ylim_out=(-1, 1),
-             lim_in=None, lim_out=None,
-             dim_out=None,
-             blend_func=blend_first,
-             filter_func=filter_nonempty):
+def warp(func, img, *,
+         xlim_in=(-1, 1), xlim_out=(-1, 1),
+         ylim_in=(-1, 1), ylim_out=(-1, 1),
+         lim_in=None, lim_out=None,
+         dim_out=None,
+         blend_func=blend_first,
+         filter_func=filter_nonempty):
     if lim_in is not None:
         xlim_in = lim_in
         ylim_in = lim_in
