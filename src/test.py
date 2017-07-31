@@ -4,6 +4,7 @@ import sys
 
 if __name__ == '__main__':
     apply_to(
-        lambda z: z * z,
-        Image.open(f'img/{sys.argv[1]}.png')
+        lambda z: z * z * z,
+        Image.open(f'img/{sys.argv[1]}.png'),
+        scale=3
     ).show()
