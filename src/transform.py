@@ -1,6 +1,8 @@
+import numpy as np
+import colorsys
+
 from PIL import Image
 from functools import partial, reduce
-import numpy as np
 
 
 def _apply_func_to_img(img, dim_in, dim_out, xlim, ylim, pixels, cur, nxt):
@@ -11,15 +13,46 @@ def _apply_func_to_img(img, dim_in, dim_out, xlim, ylim, pixels, cur, nxt):
     c1 = round(dim_out[0] * (np.real(z) - xlim[0]) / (xlim[1] - xlim[0]))
     if 0 <= c1 < dim_out[0] and 0 <= r1 < dim_out[1]:
         p = img.getpixel((r0, c0))
-        pixels[int(c1)][int(r1)].append(p)
+        if np.sum(p[:3]) > 0 and p[3] > 0:
+            pixels[int(c1)][int(r1)].append(p)
     return nxt
+
+
+def blend_first(p):
+    p = filter(lambda p: np.sum(p[:3]) > 0 and p[3] > 0, p)
+    try:
+        return next(p)
+    except StopIteration:
+        return (0, 0, 0)
+
+
+def blend_add(p):
+    a = np.array(p)
+    r, g, b = a[:, 0], a[:, 1], a[:, 2]
+    return (
+        min(int(round(np.sum(r))), 255),
+        min(int(round(np.sum(g))), 255),
+        min(int(round(np.sum(b))), 255)
+    )
+
+
+def blend_avg(p):
+    a = np.array(p)
+    r, g, b = a[:, 0], a[:, 1], a[:, 2]
+
+    return (
+        int(round(np.average(r))),
+        int(round(np.average(g))),
+        int(round(np.average(b))),
+    )
 
 
 def apply_to(func, img, *,
              xlim_in=(-1, 1), xlim_out=(-1, 1),
              ylim_in=(-1, 1), ylim_out=(-1, 1),
              lim_in=None, lim_out=None,
-             dim_out=None):
+             dim_out=None,
+             blend=blend_first):
     if lim_in is not None:
         xlim_in = lim_in
         ylim_in = lim_in
@@ -52,12 +85,8 @@ def apply_to(func, img, *,
     for i, r in enumerate(pixList):
         for j, p in enumerate(r):
             if p:
-                a = np.array(p)
-                r, g, b = a[:, 0], a[:, 1], a[:, 2]
-                pixels[i, j] = (
-                    min(int(round(np.sum(r))), 255),
-                    min(int(round(np.sum(g))), 255),
-                    min(int(round(np.sum(b))), 255)
-                )
+                pixels[i, j] = blend(p)
+            else:
+                pixels[i, j] = (0, 0, 0)
 
     return newImg
