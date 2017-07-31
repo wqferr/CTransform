@@ -10,7 +10,7 @@ def _apply_func_to_img(img, dim_in, dim_out, xlim, ylim, pixels, cur, nxt):
     r1 = round(dim_out[1] * (np.imag(z) - ylim[0]) / (ylim[1] - ylim[0]))
     c1 = round(dim_out[0] * (np.real(z) - xlim[0]) / (xlim[1] - xlim[0]))
     if 0 <= c1 < dim_out[0] and 0 <= r1 < dim_out[1]:
-        p = img.getpixel((c0, r0))
+        p = img.getpixel((r0, c0))
         if np.sum(p) > 0:
             pixels[c1, r1] = p
     return nxt
