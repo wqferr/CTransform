@@ -36,25 +36,13 @@ def filter_nonempty(p):
     return np.sum(p[:3]) > 0
 
 
-def _apply_func_to_img(filter_func,
-                       dim_in, dim_out,
-                       xlim_in, ylim_in,
-                       xlim_out, ylim_out,
-                       in_pixels, out_pixels,
-                       z0, z1):
-    c0 = int((dim_in[0] - 1) * (np.real(z0) - xlim_in[0]) /
-             (xlim_in[1] - xlim_in[0]))
-    r0 = int((dim_in[1] - 1) * (np.imag(z0) - ylim_in[0]) /
-             (ylim_in[1] - ylim_in[0]))
-
-    c1 = int(round((dim_out[0] - 1) * (np.real(z1) - xlim_out[0]) /
-                   (xlim_out[1] - xlim_out[0])))
-    r1 = int(round((dim_out[1] - 1) * (np.imag(z1) - ylim_out[0]) /
-                   (ylim_out[1] - ylim_out[0])))
-    if 0 <= c1 < dim_out[0] and 0 <= r1 < dim_out[1]:
-        p = in_pixels[r0][c0]
-        if filter_func(p):
-            out_pixels[c1][r1].append(p)
+def _apply(filter_func,
+           in_pixels, out_pixels,
+           r0, c0,
+           r1, c1):
+    p = in_pixels[r0][c0]
+    if filter_func(p):
+        out_pixels[c1][r1].append(p)
 
 
 def warp(func, img, *,
@@ -81,26 +69,39 @@ def warp(func, img, *,
     pixList = [[[] for j in range(dim_out[1])] for i in range(dim_out[0])]
 
     x = np.linspace(xlim_in[0], xlim_in[1], dim_in[0])
-    y = np.linspace(ylim_in[0], ylim_in[1], dim_in[1]) * 1j
+    y = np.linspace(ylim_in[0], ylim_in[1], dim_in[1])
     z0 = np.sum(
-        np.transpose([np.tile(x, dim_in[1]), np.repeat(y, dim_in[0])]),
+        np.transpose([np.tile(x, dim_in[1]), np.repeat(y * 1j, dim_in[0])]),
         axis=1
     )
     z1 = func(z0)
+
+    c0 = ((dim_in[0] - 1) * (np.real(z0) - xlim_in[0]) /
+          (xlim_in[1] - xlim_in[0])).astype(np.int32)
+    r0 = ((dim_in[1] - 1) * (np.imag(z0) - ylim_in[0]) /
+          (ylim_in[1] - ylim_in[0])).astype(np.int32)
+    c1 = ((dim_out[0] - 1) * (np.real(z1) - xlim_out[0]) /
+          (xlim_out[1] - xlim_out[0])).astype(np.int32)
+    r1 = ((dim_out[1] - 1) * (np.imag(z1) - ylim_out[0]) /
+          (ylim_out[1] - ylim_out[0])).astype(np.int32)
+
+    valid = np.intersect1d(
+        np.argwhere(np.logical_and(0 <= c1, c1 < dim_out[0])),
+        np.argwhere(np.logical_and(0 <= r1, r1 < dim_out[1]))
+    )
+    c0, r0, c1, r1 = c0[valid], r0[valid], c1[valid], r1[valid]
+
     in_pixels = np.array(img)
 
     part = partial(
-        _apply_func_to_img,
+        _apply,
         filter_func,
-        dim_in, dim_out,
-        xlim_in, ylim_in,
-        xlim_out, ylim_out,
         in_pixels, pixList
     )
-    vectorize(part)(z0, z1)
+    vectorize(part)(r0, c0, r1, c1)
 
     for i, r in enumerate(pixList):
         for j, p in enumerate(r):
             if p:
-                pixels[i, j] = blend_func(p)
+                pixels[i, j] = tuple(blend_func(p))
     return newImg
