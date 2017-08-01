@@ -1,8 +1,8 @@
 import numpy as np
-import colorsys
 
 from PIL import Image
-from functools import partial, reduce
+from functools import partial
+from numpy import vectorize
 
 
 def blend_first(p):
@@ -33,20 +33,28 @@ def blend_avg(p):
 def filter_nonempty(p):
     if len(p) > 3 and p[3] == 0:
         return False
-    return p[0] + p[1] + p[2] > 0
+    return np.sum(p[:3]) > 0
 
 
-def _apply_func_to_img(img, filter_func, dim_in, dim_out, xlim, ylim, pixels, cur, nxt):
-    pos, z = cur
-    r0 = pos % dim_in[0]
-    c0 = (pos - r0) / dim_in[0]
-    r1 = round(dim_out[1] * (np.imag(z) - ylim[0]) / (ylim[1] - ylim[0]))
-    c1 = round(dim_out[0] * (np.real(z) - xlim[0]) / (xlim[1] - xlim[0]))
+def _apply_func_to_img(filter_func,
+                       dim_in, dim_out,
+                       xlim_in, ylim_in,
+                       xlim_out, ylim_out,
+                       in_pixels, out_pixels,
+                       z0, z1):
+    c0 = int((dim_in[0] - 1) * (np.real(z0) - xlim_in[0]) /
+             (xlim_in[1] - xlim_in[0]))
+    r0 = int((dim_in[1] - 1) * (np.imag(z0) - ylim_in[0]) /
+             (ylim_in[1] - ylim_in[0]))
+
+    c1 = int(round((dim_out[0] - 1) * (np.real(z1) - xlim_out[0]) /
+                   (xlim_out[1] - xlim_out[0])))
+    r1 = int(round((dim_out[1] - 1) * (np.imag(z1) - ylim_out[0]) /
+                   (ylim_out[1] - ylim_out[0])))
     if 0 <= c1 < dim_out[0] and 0 <= r1 < dim_out[1]:
-        p = img.getpixel((r0, c0))
+        p = in_pixels[r0][c0]
         if filter_func(p):
-            pixels[int(c1)][int(r1)].append(p)
-    return nxt
+            out_pixels[c1][r1].append(p)
 
 
 def warp(func, img, *,
@@ -79,17 +87,20 @@ def warp(func, img, *,
         axis=1
     )
     z1 = func(z0)
-    reduce(
-        partial(_apply_func_to_img, img, filter_func, dim_in,
-                dim_out, xlim_out, ylim_out, pixList),
-        enumerate(z1)
+    in_pixels = np.array(img)
+
+    part = partial(
+        _apply_func_to_img,
+        filter_func,
+        dim_in, dim_out,
+        xlim_in, ylim_in,
+        xlim_out, ylim_out,
+        in_pixels, pixList
     )
+    vectorize(part)(z0, z1)
 
     for i, r in enumerate(pixList):
         for j, p in enumerate(r):
             if p:
                 pixels[i, j] = blend_func(p)
-            else:
-                pixels[i, j] = (0, 0, 0)
-
     return newImg

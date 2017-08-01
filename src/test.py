@@ -2,7 +2,7 @@ import sys
 import transform
 import math
 
-from PIL import Image, ImageFilter
+from PIL import Image
 from transform import warp
 
 if __name__ == '__main__':
@@ -18,12 +18,11 @@ if __name__ == '__main__':
         outName = f'{sys.argv[3]}.png'
 
     wimg = warp(
-        lambda z:  math.e**(z**2),
+        lambda z: math.e ** (z**2),
         img,
         lim_in=(-2, 2),
-        xlim_out=(-1, 3),
-        ylim_out=(-2, 2),
-        blend_func=transform.blend_add
+        lim_out=(-4, 4),
+        blend_func=transform.blend_avg
     )
     wimg.show()
     wimg.save(outName)
