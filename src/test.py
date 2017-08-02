@@ -9,10 +9,11 @@ from numpy import vectorize
 if __name__ == '__main__':
     img = Image.open(f'img/{sys.argv[1]}.png')
     outName = 'out.png'
+    dim_out = img.size
     if len(sys.argv) > 2:
-        scale = float(sys.argv[2])
+        detail = float(sys.argv[2])
         img = img.resize(
-            (int(scale * img.width), int(scale * img.height)),
+            (int(detail * img.width), int(detail * img.height)),
             Image.NEAREST
         )
     if len(sys.argv) > 3:
@@ -23,8 +24,8 @@ if __name__ == '__main__':
         img,
         lim_in=(-2, 2),
         lim_out=(-4, 4),
+        dim_out=dim_out,
         blend_func=transform.blend_avg
     )
-    img.show()
     wimg.show()
     wimg.save(outName)
